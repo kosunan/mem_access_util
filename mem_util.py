@@ -1,4 +1,4 @@
-from struct import unpack, pack
+from struct import unpack
 from ctypes import windll, wintypes, byref
 import os
 import time
@@ -19,6 +19,11 @@ CreateToolhelp32Snapshot = windll.kernel32.CreateToolhelp32Snapshot
 CloseHandle = windll.kernel32.CloseHandle
 sizeof = ctypes.sizeof
 
+g_pid = 0
+g_pro_h = 0
+g_base_ad = 0
+
+
 class MODULEENTRY32(ctypes.Structure):
     _fields_ = [
         ("dwSize",             wintypes.DWORD),
@@ -34,46 +39,45 @@ class MODULEENTRY32(ctypes.Structure):
     ]
 
 
-class Mem_Access_Class:
-    def __init__(self, process_name):
-        data = get_connection(process_name)
-        self.base_ad = data[0]
-        self.pid = data[1]
-        self.pro_h = data[2]
-
-    def r_mem(self, addres, b_dat):
-        ReadMem(self.pro_h, addres + self.base_ad, b_dat, len(b_dat), None)
-        return b_unpack(b_dat)
-
-    def w_mem(self, addres, b_dat):
-        WriteMem(self.pro_h, addres + self.base_ad, b_dat, len(b_dat), None)
-
-
 class Mem_Data_Class:
     def __init__(self, byte_len, address):
         self.ad = address
         self.val = 0
         self.b_dat = create_string_buffer(byte_len)
 
-    def r_mem(self, mem_access):
-        self.val = mem_access.r_mem(self.ad, self.b_dat)
+    def r_mem(self):
+        ReadMem(g_pro_h, self.ad + g_base_ad, self.b_dat, len(self.b_dat), None)
+        self.val = b_unpack(self.b_dat)
+        return b_unpack(self.b_dat)
 
-    def w_mem(self, mem_access):
-        mem_access.w_mem(self.ad, self.b_dat)
+    def w_mem(self):
+        WriteMem(g_pro_h, self.ad + g_base_ad, self.b_dat, len(self.b_dat), None)
+
+
+def r_mem_abs_addres(addres, b_dat):
+    ReadMem(g_pro_h, addres, b_dat, len(b_dat), None)
+
+
+def w_mem_abs_addres(addres, b_dat):
+    WriteMem(g_pro_h, addres, b_dat, len(b_dat), None)
 
 
 def b_unpack(d_data):
     num = 0
     num = len(d_data)
     if num == 1:
-        return unpack('b', d_data.raw)[0]
+        return unpack('b', d_data)[0]
     elif num == 2:
-        return unpack('h', d_data.raw)[0]
+        return unpack('h', d_data)[0]
     elif num == 4:
-        return unpack('l', d_data.raw)[0]
+        return unpack('l', d_data)[0]
 
 
 def get_connection(process_name):
+    global g_pid
+    global g_pro_h
+    global g_base_ad
+
     res = False
 
     while res == False:
@@ -86,7 +90,9 @@ def get_connection(process_name):
     pro_h = OpenProcess(0x1F0FFF, False, pid)
     base_ad = get_base_addres(pid)
 
-    return pid, pro_h, base_ad
+    g_pid = pid
+    g_pro_h = pro_h
+    g_base_ad = base_ad
 
 
 def pidget(process_name):
