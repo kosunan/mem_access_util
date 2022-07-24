@@ -56,14 +56,13 @@ class Mem_Data_Class:
 
 def r_mem_abs_addres(addres, b_dat):
     ReadMem(g_pro_h, addres, b_dat, len(b_dat), None)
-
+    return b_unpack(b_dat)
 
 def w_mem_abs_addres(addres, b_dat):
     WriteMem(g_pro_h, addres, b_dat, len(b_dat), None)
 
 
 def b_unpack(d_data):
-    num = 0
     num = len(d_data)
     if num == 1:
         return unpack('b', d_data)[0]
