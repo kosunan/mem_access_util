@@ -1,5 +1,4 @@
 from struct import unpack
-from ctypes import windll, wintypes, byref
 import os
 import time
 import ctypes
@@ -8,16 +7,17 @@ import psutil
 
 wintypes = ctypes.wintypes
 windll = ctypes.windll
-create_string_buffer = ctypes.create_string_buffer
 byref = ctypes.byref
+sizeof = ctypes.sizeof
+create_string_buffer = ctypes.create_string_buffer
+
 WriteMem = windll.kernel32.WriteProcessMemory
 ReadMem = windll.kernel32.ReadProcessMemory
 OpenProcess = windll.kernel32.OpenProcess
 Module32Next = windll.kernel32.Module32Next
 Module32First = windll.kernel32.Module32First
-CreateToolhelp32Snapshot = windll.kernel32.CreateToolhelp32Snapshot
 CloseHandle = windll.kernel32.CloseHandle
-sizeof = ctypes.sizeof
+CreateToolhelp32Snapshot = windll.kernel32.CreateToolhelp32Snapshot
 
 g_pid = 0
 g_pro_h = 0
@@ -58,11 +58,13 @@ def r_mem_abs_addres(addres, b_dat):
     ReadMem(g_pro_h, addres, b_dat, len(b_dat), None)
     return b_unpack(b_dat)
 
+
 def w_mem_abs_addres(addres, b_dat):
     WriteMem(g_pro_h, addres, b_dat, len(b_dat), None)
 
 
 def b_unpack(d_data):
+
     num = len(d_data)
     if num == 1:
         return unpack('b', d_data)[0]
@@ -95,6 +97,7 @@ def get_connection(process_name):
 
 
 def pidget(process_name):
+
     dict_pids = {
         p.info["name"]: p.info["pid"]
         for p in psutil.process_iter(attrs=["name", "pid"])
@@ -127,3 +130,54 @@ def get_base_addres(pid):
     base_ad = unpack('q', b_baseAddr.raw)[0]
 
     return base_ad
+
+
+def changeFontSize(size_x, size_y):  # Changes the font size to *size* pixels (kind of, but not really. You'll have to try it to chack if it works for your purpose ;) )
+    from ctypes import POINTER, WinDLL, Structure, sizeof, byref
+    from ctypes.wintypes import BOOL, SHORT, WCHAR, UINT, ULONG, DWORD, HANDLE
+
+    LF_FACESIZE = 32
+    STD_OUTPUT_HANDLE = -11
+
+    class COORD(Structure):
+        _fields_ = [
+            ("X", SHORT),
+            ("Y", SHORT),
+        ]
+
+    class CONSOLE_FONT_INFOEX(Structure):
+        _fields_ = [
+            ("cbSize", ULONG),
+            ("nFont", DWORD),
+            ("dwFontSize", COORD),
+            ("FontFamily", UINT),
+            ("FontWeight", UINT),
+            ("FaceName", WCHAR * LF_FACESIZE)
+        ]
+
+    kernel32_dll = WinDLL("kernel32.dll")
+
+    get_last_error_func = kernel32_dll.GetLastError
+    get_last_error_func.argtypes = []
+    get_last_error_func.restype = DWORD
+
+    get_std_handle_func = kernel32_dll.GetStdHandle
+    get_std_handle_func.argtypes = [DWORD]
+    get_std_handle_func.restype = HANDLE
+
+    get_current_console_font_ex_func = kernel32_dll.GetCurrentConsoleFontEx
+    get_current_console_font_ex_func.argtypes = [HANDLE, BOOL, POINTER(CONSOLE_FONT_INFOEX)]
+    get_current_console_font_ex_func.restype = BOOL
+
+    set_current_console_font_ex_func = kernel32_dll.SetCurrentConsoleFontEx
+    set_current_console_font_ex_func.argtypes = [HANDLE, BOOL, POINTER(CONSOLE_FONT_INFOEX)]
+    set_current_console_font_ex_func.restype = BOOL
+
+    stdout = get_std_handle_func(STD_OUTPUT_HANDLE)
+    font = CONSOLE_FONT_INFOEX()
+    font.cbSize = sizeof(CONSOLE_FONT_INFOEX)
+
+    font.dwFontSize.X = size_x
+    font.dwFontSize.Y = size_y
+
+    set_current_console_font_ex_func(stdout, False, byref(font))
