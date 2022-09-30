@@ -73,7 +73,6 @@ def b_unpack(d_data):
     elif num == 4:
         return unpack('l', d_data)[0]
 
-
 def get_connection(process_name):
     global g_pid
     global g_pro_h
